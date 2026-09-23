@@ -65,6 +65,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     'Despesas: ${formatBRL(summary.totalExpense)}',
                     key: const Key('total_expense'),
                   ),
+                  Text(
+                    '${transactions.length} lançamento(s)',
+                    key: const Key('transaction_count'),
+                  ),
                 ],
               ),
             ),
