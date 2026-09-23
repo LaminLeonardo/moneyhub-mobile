@@ -4,7 +4,7 @@ publish_to: "none"
 
 # Versão gerenciada automaticamente pelo release-please (SemVer).
 # Não altere manualmente: use Conventional Commits (feat/fix/...).
-version: 0.1.0
+version: 0.2.0
 
 environment:
   sdk: ">=3.4.0 <4.0.0"
