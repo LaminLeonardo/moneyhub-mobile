@@ -140,7 +140,7 @@ jobs:
     steps:
       - name: Changelog, versão SemVer e tag (baseline)
         id: rp
-        uses: googleapis/release-please-action@v4
+        uses: googleapis/release-please-action@v5
         with:
           # PAT permite que o PR de release dispare o CI (ver docs/guia-publicacao.md)
           token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
