@@ -1,0 +1,50 @@
+# ---- Flutter / Dart ----
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+build/
+coverage/
+.flutter-plugins
+.flutter-plugins-dependencies
+*.iml
+.metadata.local
+
+# Android
+**/android/.gradle
+**/android/captures/
+**/android/local.properties
+**/android/key.properties
+**/android/app/debug
+**/android/app/profile
+**/android/app/release
+*.jks
+*.keystore
+
+# iOS / macOS
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/flutter_export_environment.sh
+
+# ---- IDEs ----
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+.DS_Store
+Thumbs.db
+
+# ---- Terraform ----
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+.terraform.lock.hcl.bak
+
+# ---- Segredos (NUNCA versionar) ----
+.env
+.env.*
+!.env.example

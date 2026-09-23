@@ -1,0 +1,76 @@
+name: "Solicitação de Mudança (SM)"
+description: "Solicitar nova funcionalidade, melhoria ou alteração em um item de configuração"
+title: "[SM] "
+labels: ["status:nova"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Registro formal de mudança conforme o PGCS (seção 8).
+        O número desta issue é a **identificação única** da SM e deve aparecer
+        no nome da branch (`feature/<numero>-<descricao>`) e no PR (`Closes #<numero>`).
+  - type: input
+    id: solicitante
+    attributes:
+      label: Solicitante
+      description: Quem está pedindo a mudança
+      placeholder: "Ex.: Leonardo Lamin / Professor / usuário"
+    validations:
+      required: true
+  - type: dropdown
+    id: itens
+    attributes:
+      label: Item(ns) de configuração afetado(s)
+      multiple: true
+      options:
+        - "Código-fonte do app (mobile/lib)"
+        - "Testes automatizados (mobile/test)"
+        - "Pipelines (.github/workflows)"
+        - "Dockerfile / nginx.conf"
+        - "Infraestrutura como Código (infra/terraform)"
+        - "Dependências (pubspec.yaml / pubspec.lock)"
+        - "Documentação (README, docs, PGCS)"
+    validations:
+      required: true
+  - type: dropdown
+    id: classificacao
+    attributes:
+      label: Classificação
+      options:
+        - "Nova funcionalidade"
+        - "Melhoria"
+        - "Correção de defeito"
+        - "Infraestrutura / pipeline"
+        - "Outra"
+    validations:
+      required: true
+  - type: dropdown
+    id: prioridade
+    attributes:
+      label: Prioridade
+      options: ["Alta", "Média", "Baixa"]
+    validations:
+      required: true
+  - type: textarea
+    id: descricao
+    attributes:
+      label: Descrição da mudança
+      description: O que deve ser feito
+    validations:
+      required: true
+  - type: textarea
+    id: impacto
+    attributes:
+      label: Justificativa e análise de impacto
+      description: Por que é necessária, quais ICs/telas/pipelines são impactados e riscos
+  - type: textarea
+    id: aceite
+    attributes:
+      label: Critérios de aceitação
+      placeholder: "- [ ] ..."
+  - type: checkboxes
+    id: ccm
+    attributes:
+      label: Comitê de Controle de Mudanças
+      options:
+        - label: "Mudança de alto impacto/risco — requer análise do CCM (ver PGCS 8.2)"

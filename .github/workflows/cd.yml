@@ -1,0 +1,209 @@
+# Pipeline de Entrega/Implantação Contínua (CD) — PGCS seção 6
+# Disparado a cada merge na main. O artefato é gerado UMA vez (job build) e o
+# MESMO artefato é promovido: Homologação -> (gate) -> Produção.
+name: CD
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+  packages: write
+
+concurrency:
+  group: cd-main
+  cancel-in-progress: false
+
+env:
+  IMAGE: ghcr.io/laminleonardo/moneyhub-mobile
+  PAGES_URL: https://laminleonardo.github.io/moneyhub-mobile/
+  PAGES_BASE: /moneyhub-mobile/
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      short_sha: ${{ steps.meta.outputs.short_sha }}
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Metadados de versão
+        id: meta
+        run: |
+          VERSION=$(grep -E '^version:' pubspec.yaml | awk '{print $2}' | cut -d+ -f1)
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "short_sha=$SHORT_SHA" >> "$GITHUB_OUTPUT"
+          echo "Versão $VERSION — commit $SHORT_SHA"
+
+      - name: Dependências e testes (verificação pós-merge)
+        run: |
+          flutter pub get
+          flutter test
+
+      - name: Build web (uma única vez)
+        run: flutter build web --release --base-href / --dart-define=APP_VERSION=${{ steps.meta.outputs.version }}+${{ steps.meta.outputs.short_sha }}
+
+      - name: Build APK Android
+        run: flutter build apk --release --dart-define=APP_VERSION=${{ steps.meta.outputs.version }}+${{ steps.meta.outputs.short_sha }}
+
+      - name: Empacotar build web (.zip)
+        run: cd build/web && zip -qr ../../moneyhub-web.zip .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-build
+          path: mobile/build/web
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-files
+          path: |
+            mobile/moneyhub-web.zip
+            mobile/build/app/outputs/flutter-apk/app-release.apk
+
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publicar imagem no GitHub Container Registry
+        uses: docker/build-push-action@v6
+        with:
+          context: mobile
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:sha-${{ steps.meta.outputs.short_sha }}
+            ${{ env.IMAGE }}:main
+
+  deploy-homologacao:
+    name: deploy-homologacao
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: homologacao
+      url: ${{ env.PAGES_URL }}staging/
+    concurrency:
+      group: gh-pages
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: web-build
+          path: site
+
+      - name: Configuração do ambiente (base href de homologação)
+        run: sed -i 's#<base href="/">#<base href="${{ env.PAGES_BASE }}staging/">#' site/index.html
+
+      - name: Deploy em Homologação (GitHub Pages /staging)
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site
+          destination_dir: staging
+          keep_files: true
+          commit_message: "deploy(homologacao): ${{ needs.build.outputs.version }}+${{ needs.build.outputs.short_sha }}"
+
+  smoke-homologacao:
+    name: smoke-homologacao
+    needs: [build, deploy-homologacao]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Smoke test / health check em Homologação
+        run: bash scripts/smoke_test.sh "${{ env.PAGES_URL }}staging/" "${{ needs.build.outputs.version }}"
+
+  release-please:
+    name: release-please
+    needs: smoke-homologacao
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.rp.outputs['mobile--release_created'] }}
+      tag_name: ${{ steps.rp.outputs['mobile--tag_name'] }}
+    steps:
+      - name: Changelog, versão SemVer e tag (baseline)
+        id: rp
+        uses: googleapis/release-please-action@v4
+        with:
+          # PAT permite que o PR de release dispare o CI (ver docs/guia-publicacao.md)
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  deploy-producao:
+    name: deploy-producao
+    needs: [build, release-please]
+    if: needs.release-please.outputs.release_created == 'true'
+    runs-on: ubuntu-latest
+    # Gate de release: o environment "producao" exige aprovação manual
+    environment:
+      name: producao
+      url: ${{ env.PAGES_URL }}
+    concurrency:
+      group: gh-pages
+    env:
+      TAG: ${{ needs.release-please.outputs.tag_name }}
+      VERSION: ${{ needs.build.outputs.version }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: web-build
+          path: site
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-files
+          path: release-files
+
+      - name: Configuração do ambiente (base href de produção)
+        run: sed -i 's#<base href="/">#<base href="${{ env.PAGES_BASE }}">#' site/index.html
+
+      - name: Deploy em Produção (GitHub Pages /)
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site
+          keep_files: true
+          commit_message: "deploy(producao): ${{ env.TAG }}"
+
+      - name: Anexar artefatos à Release (APK + build web)
+        run: |
+          cp release-files/moneyhub-web.zip "moneyhub-web-${TAG}.zip"
+          cp release-files/build/app/outputs/flutter-apk/app-release.apk "moneyhub-${TAG}.apk"
+          gh release upload "$TAG" "moneyhub-web-${TAG}.zip" "moneyhub-${TAG}.apk" --clobber
+
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Promover imagem (mesmo digest) para a versão de release
+        run: |
+          docker buildx imagetools create \
+            -t "${IMAGE}:${VERSION}" \
+            -t "${IMAGE}:latest" \
+            "${IMAGE}:sha-${{ needs.build.outputs.short_sha }}"
+
+      - name: Smoke test / health check em Produção
+        run: bash scripts/smoke_test.sh "${{ env.PAGES_URL }}" "${VERSION}"

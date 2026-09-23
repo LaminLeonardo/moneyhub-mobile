@@ -1,0 +1,65 @@
+# Rollback de Produção — PGCS seção 6.3
+# Reimplanta em produção o artefato JÁ PUBLICADO de uma release anterior
+# (sem recompilar), a partir dos arquivos anexados à GitHub Release.
+name: Rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag da release a restaurar (ex.: v0.1.0)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  packages: write
+
+concurrency:
+  group: gh-pages
+
+env:
+  IMAGE: ghcr.io/laminleonardo/moneyhub-mobile
+  PAGES_URL: https://laminleonardo.github.io/moneyhub-mobile/
+  PAGES_BASE: /moneyhub-mobile/
+
+jobs:
+  rollback-producao:
+    name: rollback-producao
+    runs-on: ubuntu-latest
+    environment:
+      name: producao
+      url: ${{ env.PAGES_URL }}
+    env:
+      TAG: ${{ inputs.tag }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Baixar artefato web da release
+        run: |
+          gh release download "$TAG" --pattern "moneyhub-web-${TAG}.zip" --dir .
+          mkdir site && unzip -q "moneyhub-web-${TAG}.zip" -d site
+          sed -i 's#<base href="/">#<base href="${{ env.PAGES_BASE }}">#' site/index.html
+          echo "VERSION=${TAG#v}" >> "$GITHUB_ENV"
+
+      - name: Reimplantar em Produção
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site
+          keep_files: true
+          commit_message: "rollback(producao): ${{ inputs.tag }}"
+
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Apontar a tag latest da imagem para a versão restaurada
+        run: docker buildx imagetools create -t "${IMAGE}:latest" "${IMAGE}:${VERSION}"
+
+      - name: Smoke test pós-rollback
+        run: bash scripts/smoke_test.sh "${{ env.PAGES_URL }}" "${VERSION}"

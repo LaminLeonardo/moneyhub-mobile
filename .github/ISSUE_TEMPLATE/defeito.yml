@@ -1,0 +1,44 @@
+name: "Relato de Defeito"
+description: "Reportar um erro encontrado em Homologação ou Produção"
+title: "[DEFEITO] "
+labels: ["tipo:defeito", "status:nova"]
+body:
+  - type: input
+    id: versao
+    attributes:
+      label: Versão
+      description: Versão exibida no rodapé do app ou tag da release
+      placeholder: "Ex.: 0.2.0+a1b2c3d"
+    validations:
+      required: true
+  - type: dropdown
+    id: ambiente
+    attributes:
+      label: Ambiente
+      options: ["Produção", "Homologação", "Desenvolvimento (local)"]
+    validations:
+      required: true
+  - type: dropdown
+    id: severidade
+    attributes:
+      label: Severidade
+      options:
+        - "Crítica (sistema indisponível — hotfix)"
+        - "Alta"
+        - "Média"
+        - "Baixa"
+    validations:
+      required: true
+  - type: textarea
+    id: passos
+    attributes:
+      label: Passos para reproduzir
+      placeholder: "1. ...\n2. ..."
+    validations:
+      required: true
+  - type: textarea
+    id: esperado
+    attributes:
+      label: Resultado esperado x obtido
+    validations:
+      required: true

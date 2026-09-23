@@ -1,0 +1,19 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  exclude:
+    - build/**
+    - android/**
+    - web/**
+  errors:
+    # Estes avisos quebram o pipeline de CI (quality gate).
+    unused_import: error
+    unused_local_variable: error
+    dead_code: error
+
+linter:
+  rules:
+    - prefer_const_constructors
+    - prefer_final_locals
+    - avoid_print
+    - always_declare_return_types

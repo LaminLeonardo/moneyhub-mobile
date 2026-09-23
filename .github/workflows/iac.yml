@@ -1,0 +1,31 @@
+# Validação da Infraestrutura como Código — PGCS seção 7
+# "plan" em PR (validação) / "apply" manual após aprovação.
+name: IaC
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "infra/**"
+      - ".github/workflows/iac.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  terraform-validate:
+    name: terraform-validate
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra/terraform
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - name: Formatação
+        run: terraform fmt -check -recursive
+      - name: Init (sem backend) e validação
+        run: |
+          terraform init -backend=false
+          terraform validate
