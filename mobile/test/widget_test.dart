@@ -26,6 +26,7 @@ void main() {
     expect(find.text('Salário'), findsOneWidget);
     expect(find.text('Aluguel'), findsOneWidget);
     expect(find.byType(ListTile), findsNWidgets(3));
+    expect(find.text('3 lançamento(s)'), findsOneWidget);
   });
 
   testWidgets('formulário valida campos obrigatórios', (tester) async {
