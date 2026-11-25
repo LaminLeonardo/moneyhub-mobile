@@ -45,6 +45,26 @@ void main() {
     });
   });
 
+  group('validateAmount (SM #11 — limite por lançamento)', () {
+    test('aceita valores até R\$ 1.000.000,00', () {
+      expect(validateAmount('0,01'), isNull);
+      expect(validateAmount('1.000.000,00'), isNull);
+    });
+
+    test('recusa valores acima de R\$ 1.000.000,00', () {
+      const msg = 'O valor máximo por lançamento é R\$ 1.000.000,00';
+      expect(validateAmount('1.000.000,01'), msg);
+      expect(validateAmount('2000000'), msg);
+    });
+
+    test('continua recusando valores vazios, zero ou negativos', () {
+      const msg = 'Informe um valor maior que zero';
+      expect(validateAmount(''), msg);
+      expect(validateAmount('0'), msg);
+      expect(validateAmount('-5'), msg);
+    });
+  });
+
   group('formatDate', () {
     test('formata como dd/MM/aaaa', () {
       expect(formatDate(DateTime(2026, 9, 5)), '05/09/2026');

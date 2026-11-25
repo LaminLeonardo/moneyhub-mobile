@@ -43,4 +43,25 @@ void main() {
     expect(find.text('Informe a descrição'), findsOneWidget);
     expect(find.text('Informe um valor maior que zero'), findsOneWidget);
   });
+
+  testWidgets('formulário recusa valor acima de R\$ 1.000.000,00', (
+    tester,
+  ) async {
+    final repository = InMemoryTransactionRepository();
+    await tester.pumpWidget(MoneyHubApp(repository: repository));
+
+    await tester.tap(find.byKey(const Key('add_transaction')));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byKey(const Key('field_description')), 'Erro');
+    await tester.enterText(find.byKey(const Key('field_amount')), '1000000,01');
+    await tester.tap(find.byKey(const Key('save_button')));
+    await tester.pump();
+
+    expect(
+      find.text('O valor máximo por lançamento é R\$ 1.000.000,00'),
+      findsOneWidget,
+    );
+    expect(repository.getAll(), isEmpty);
+  });
 }
