@@ -83,9 +83,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
               decoration: const InputDecoration(labelText: 'Valor (R\$)'),
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
-              validator: (value) => parseAmountToCents(value) == null
-                  ? 'Informe um valor maior que zero'
-                  : null,
+              validator: validateAmount,
             ),
             TextFormField(
               key: const Key('field_category'),

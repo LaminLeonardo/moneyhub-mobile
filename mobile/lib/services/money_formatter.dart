@@ -34,6 +34,20 @@ int? parseAmountToCents(String? input) {
   return (value * 100).round();
 }
 
+/// Valor máximo aceito em um único lançamento: R\$ 1.000.000,00 (SM #11).
+const int maxAmountInCents = 100000000;
+
+/// Valida o valor digitado no formulário de lançamento.
+/// Retorna a mensagem de erro, ou null se o valor for válido.
+String? validateAmount(String? input) {
+  final cents = parseAmountToCents(input);
+  if (cents == null) return 'Informe um valor maior que zero';
+  if (cents > maxAmountInCents) {
+    return 'O valor máximo por lançamento é ${formatBRL(maxAmountInCents)}';
+  }
+  return null;
+}
+
 /// Formata a data como dd/MM/aaaa.
 String formatDate(DateTime date) {
   final d = date.day.toString().padLeft(2, '0');
